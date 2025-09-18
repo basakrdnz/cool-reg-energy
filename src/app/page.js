@@ -1,21 +1,22 @@
 import Link from "next/link";
 import GlassButton from "../components/GlassButton";
-import Plasma from "../components/Plasma";
+import DarkVeil from "../components/DarkVeil";
 
 export default function Home() {
   return (
     <div className="bg-background">
-      {/* Hero Section with Plasma Background */}
+      {/* Hero Section with DarkVeil Background */}
       <section className="relative overflow-hidden min-h-screen flex items-center" style={{ paddingTop: 0 }}>
-        {/* Plasma background */}
+        {/* DarkVeil background */}
         <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: -10 }}>
-          <Plasma 
-            color="#ff6b35"
-            speed={0.6}
-            direction="forward"
-            scale={1.1}
-            opacity={0.8}
-            mouseInteractive={true}
+          <DarkVeil 
+            hueShift={30}
+            noiseIntensity={0.1}
+            scanlineIntensity={0.2}
+            speed={0.5}
+            scanlineFrequency={0.5}
+            warpAmount={0.1}
+            resolutionScale={1}
           />
         </div>
         

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
 
 const hexToRgb = hex => {
@@ -91,21 +91,47 @@ export const Plasma = ({
 }) => {
   const containerRef = useRef(null);
   const mousePos = useRef({ x: 0, y: 0 });
+  const [webglSupported, setWebglSupported] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Check WebGL support
+  const checkWebGLSupport = () => {
+    if (typeof window === 'undefined') return false;
+    
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      return !!gl;
+    } catch (e) {
+      return false;
+    }
+  };
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    setIsClient(true);
+    setWebglSupported(checkWebGLSupport());
+  }, []);
+
+  useEffect(() => {
+    if (!containerRef.current || !isClient || !webglSupported) return;
 
     const useCustomColor = color ? 1.0 : 0.0;
     const customColorRgb = color ? hexToRgb(color) : [1, 1, 1];
 
     const directionMultiplier = direction === 'reverse' ? -1.0 : 1.0;
 
-    const renderer = new Renderer({
-      webgl: 2,
-      alpha: true,
-      antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2)
-    });
+    let renderer;
+    try {
+      renderer = new Renderer({
+        webgl: 2,
+        alpha: true,
+        antialias: false,
+        dpr: Math.min(window.devicePixelRatio || 1, 2)
+      });
+    } catch (error) {
+      console.warn('Failed to create WebGL renderer:', error);
+      return;
+    }
     const gl = renderer.gl;
     const canvas = gl.canvas;
     canvas.style.display = 'block';
@@ -191,7 +217,19 @@ export const Plasma = ({
         console.warn('Canvas already removed from container');
       }
     };
-  }, [color, speed, direction, scale, opacity, mouseInteractive]);
+  }, [color, speed, direction, scale, opacity, mouseInteractive, isClient, webglSupported]);
+
+  // Fallback component for when WebGL is not supported
+  const FallbackComponent = () => (
+    <div className="w-full h-full overflow-hidden relative bg-gradient-to-br from-orange-500/20 via-red-500/20 to-pink-500/20 animate-pulse">
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+    </div>
+  );
+
+  // Show fallback during SSR or when WebGL is not supported
+  if (!isClient || !webglSupported) {
+    return <FallbackComponent />;
+  }
 
   return <div ref={containerRef} className="w-full h-full overflow-hidden relative" />;
 };

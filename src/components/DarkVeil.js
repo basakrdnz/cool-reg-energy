@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Renderer, Program, Mesh, Triangle, Vec2 } from 'ogl';
 
 const vertex = `
@@ -85,14 +85,43 @@ export default function DarkVeil({
   resolutionScale = 1
 }) {
   const ref = useRef(null);
+  const [webglSupported, setWebglSupported] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Check WebGL support
+  const checkWebGLSupport = () => {
+    if (typeof window === 'undefined') return false;
+    
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      return !!gl;
+    } catch (e) {
+      return false;
+    }
+  };
+
   useEffect(() => {
+    setIsClient(true);
+    setWebglSupported(checkWebGLSupport());
+  }, []);
+
+  useEffect(() => {
+    if (!isClient || !webglSupported) return;
+    
     const canvas = ref.current;
     const parent = canvas.parentElement;
 
-    const renderer = new Renderer({
-      dpr: Math.min(window.devicePixelRatio, 2),
-      canvas
-    });
+    let renderer;
+    try {
+      renderer = new Renderer({
+        dpr: Math.min(window.devicePixelRatio, 2),
+        canvas
+      });
+    } catch (error) {
+      console.warn('Failed to create WebGL renderer:', error);
+      return;
+    }
 
     const gl = renderer.gl;
     const geometry = new Triangle(gl);
@@ -143,6 +172,19 @@ export default function DarkVeil({
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
     };
-  }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale]);
+  }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale, isClient, webglSupported]);
+
+  // Fallback component for when WebGL is not supported
+  const FallbackComponent = () => (
+    <div className="w-full h-full overflow-hidden relative bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-indigo-900/30 animate-pulse">
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse"></div>
+    </div>
+  );
+
+  // Show fallback during SSR or when WebGL is not supported
+  if (!isClient || !webglSupported) {
+    return <FallbackComponent />;
+  }
+
   return <canvas ref={ref} className="w-full h-full block" />;
 }

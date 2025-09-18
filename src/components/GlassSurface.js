@@ -3,8 +3,10 @@ import { useEffect, useRef, useState, useId } from 'react';
 
 const useDarkMode = () => {
   const [isDark, setIsDark] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setIsHydrated(true);
     if (typeof window === 'undefined') return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -15,7 +17,8 @@ const useDarkMode = () => {
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  return isDark;
+  // Return false during SSR to ensure consistent hydration
+  return isHydrated ? isDark : false;
 };
 
 const GlassSurface = ({
@@ -140,8 +143,14 @@ const GlassSurface = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height]);
 
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const supportsSVGFilters = () => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+    if (!isClient || typeof window === 'undefined' || typeof document === 'undefined') return false;
     
     const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
     const isFirefox = /Firefox/.test(navigator.userAgent);
@@ -156,7 +165,7 @@ const GlassSurface = ({
   };
 
   const supportsBackdropFilter = () => {
-    if (typeof window === 'undefined') return false;
+    if (!isClient || typeof window === 'undefined') return false;
     return CSS.supports('backdrop-filter', 'blur(10px)');
   };
 
@@ -169,6 +178,17 @@ const GlassSurface = ({
       '--glass-frost': `${backgroundOpacity}`,
       '--glass-saturation': `${saturation}`
     };
+
+    // During SSR or before hydration, always return fallback styles to prevent hydration mismatch
+    if (!isClient) {
+      return {
+        ...baseStyles,
+        background: 'rgba(255, 255, 255, 0.4)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                    inset 0 -1px 0 0 rgba(255, 255, 255, 0.3)`
+      };
+    }
 
     const svgSupported = supportsSVGFilters();
     const backdropFilterSupported = supportsBackdropFilter();
